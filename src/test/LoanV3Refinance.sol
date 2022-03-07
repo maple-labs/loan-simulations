@@ -15,12 +15,12 @@ import { IDebtLockerLike, IPoolLike, IUSDCLike } from "../interfaces/Interfaces.
 
 contract LoanV3RefinanceTests is TestUtils {
 
-    address internal constant BORROWER                 = address(0xa8c42bBb0648511cC9004fbDCf0FA365088F862B);
-    address internal constant DEBT_LOCKER              = address(0xb61374f64Bb4805e1e815799F3aa6e149C8141E5);
+    address internal constant BORROWER                 = address(0xb079F40dd951d842f688275100524c09bEf9b4E2);
+    address internal constant DEBT_LOCKER              = address(0x55689CCB4274502335DD26CB75c31A8F1fAcD9f1);
     address internal constant DEBT_LOCKER_FACTORY      = address(0xA83404CAA79989FfF1d84bA883a1b8187397866C);
     address internal constant GLOBALS                  = address(0xC234c62c8C09687DFf0d9047e40042cd166F3600);
     address internal constant GOVERNOR                 = address(0xd6d4Bcde6c816F17889f1Dd3000aF0261B03a196);
-    address internal constant LOAN                     = address(0x7dF5A2238C62e4b7E05238Da1FBe4b6FbbE22770);
+    address internal constant LOAN                     = address(0x1597bc9C167bA318Da52EE94FDb0efAf84837BBF);
     address internal constant LOAN_FACTORY             = address(0x36a7350309B2Eb30F3B908aB0154851B5ED81db0);
     address internal constant LOAN_IMPLEMENTATION_V200 = address(0x97940C7aea99998da4c56922211ce012E7765395);
     address internal constant POOL                     = address(0xFeBd6F15Df3B73DC4307B1d7E65D46413e710C27);
@@ -40,6 +40,20 @@ contract LoanV3RefinanceTests is TestUtils {
         vm.stopPrank();
     }
 
+    function test_refinance_afterUpgrade() external {
+        vm.startPrank(BORROWER);
+        IMapleLoan(LOAN).upgrade(300, "");
+    }
+
+    function test_refinance_beforeUpgrade() external {
+        // TODO
+    }
+
+    function test_refinance_duringUpgrade() external {
+        // TODO
+    }
+
+    /*
     function test_refinance_afterUpgrade_samePrincipal() external {
         assertEq(IMapleLoan(LOAN).implementation(), LOAN_IMPLEMENTATION_V200);
 
@@ -198,13 +212,6 @@ contract LoanV3RefinanceTests is TestUtils {
         assertEq(IUSDCLike(USDC).balanceOf(TREASURY),      treasuryStartingBalance + treasuryFee);
         assertEq(IUSDCLike(USDC).balanceOf(TREASURY),      584_157_523992);
     }
-
-    function test_refinance_beforeUpgrade_samePrincipal() external {
-        // TODO
-    }
-
-    function test_refinance_duringUpgrade_samePrincipal() external {
-        // TODO
-    }
+    */
 
 }

@@ -1,4 +1,2 @@
-all    :; dapp --use solc:0.8.7 build
-clean  :; dapp clean
+all    :; forge build
 test   :; ./test.sh
-deploy :; dapp create Poolv2Research
