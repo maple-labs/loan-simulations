@@ -9,7 +9,7 @@ import { IMapleLoanFactory }     from "../../lib/loan/contracts/interfaces/IMapl
 import { MapleLoan }            from "../../lib/loan/contracts/MapleLoan.sol";
 import { MapleLoanInitializer } from "../../lib/loan/contracts/MapleLoanInitializer.sol";
 
-contract LoanV2UpgradeTests is TestUtils {
+contract LoanV3UpgradeTests is TestUtils {
 
     address internal constant BORROWER                 = address(0xa8c42bBb0648511cC9004fbDCf0FA365088F862B);
     address internal constant FACTORY                  = address(0x36a7350309B2Eb30F3B908aB0154851B5ED81db0);
