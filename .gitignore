@@ -1,4 +1,5 @@
 # Dapp
 /out
 /cache
+/bin
 .gas-snapshot
