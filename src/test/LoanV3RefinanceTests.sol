@@ -95,7 +95,7 @@ contract LoanV3RefinanceTests is TestUtils {
         assertEq(LOAN.interestRate(),      STARTING_INTEREST_RATE);
         assertEq(LOAN.paymentsRemaining(), STARTING_PAYMENTS_REMAINING);
         assertEq(LOAN.paymentInterval(),   PAYMENT_INTERVAL);
-        
+
         // Make a payment before the refinance.
         uint256 payment = _calculatePayment(STARTING_PRINCIPAL, STARTING_INTEREST_RATE, PAYMENT_INTERVAL);
         ( uint256 principalPaid, uint256 interestPaid, uint256 delegateFeePaid, uint256 treasuryFeePaid ) = _makeNextPayment(payment);
@@ -138,23 +138,42 @@ contract LoanV3RefinanceTests is TestUtils {
         assertEq(LOAN.delegateFee(),       EXPECTED_POOL_DELEGATE_FEE);
         assertEq(LOAN.treasuryFee(),       EXPECTED_TREASURY_FEE);
 
+        vm.prank(BORROWER);
+        LOAN.drawdownFunds(PRINCIPAL_INCREASE, BORROWER);
+
         // Cache balances before the payment.
         uint256 loanBalanceBeforePayment         = USDC.balanceOf(address(LOAN));
         uint256 poolDelegateBalanceBeforePayment = USDC.balanceOf(POOL_DELEGATE);
         uint256 treasuryBalanceBeforePayment     = USDC.balanceOf(TREASURY);
 
         // Calculate the payment using the new terms of the loan, adding the establishment fees on top.
-        payment = _calculatePayment(NEW_PRINCIPAL, NEW_INTEREST_RATE, PAYMENT_INTERVAL);
-        ( principalPaid, interestPaid, delegateFeePaid, treasuryFeePaid ) = _makeNextPayment(payment);
+        ( principalPaid, interestPaid, delegateFeePaid, treasuryFeePaid ) = LOAN.getNextPaymentBreakdown();
+        uint256 totalPayment = principalPaid + interestPaid + delegateFeePaid + treasuryFeePaid;
+        emit log_named_uint("USDC.balanceOf(address(LOAN))", USDC.balanceOf(address(LOAN)));
+        emit log_named_uint("payment        ", payment);
+        emit log_named_uint("principalPaid  ", principalPaid);
+        emit log_named_uint("interestPaid   ", interestPaid);
+        emit log_named_uint("delegateFeePaid", delegateFeePaid);
+        emit log_named_uint("treasuryFeePaid", treasuryFeePaid);
+        emit log_named_uint("sum            ", principalPaid + interestPaid + delegateFeePaid + treasuryFeePaid);
+
+        _makeNextPayment(totalPayment);
+
+        emit log_named_uint("USDC.balanceOf(address(LOAN))", USDC.balanceOf(address(LOAN)));
+        emit log_named_uint("principalPaid  ", principalPaid);
+        emit log_named_uint("interestPaid   ", interestPaid);
+        emit log_named_uint("delegateFeePaid", delegateFeePaid);
+        emit log_named_uint("treasuryFeePaid", treasuryFeePaid);
+        emit log_named_uint("sum            ", principalPaid + interestPaid + delegateFeePaid + treasuryFeePaid);
 
         // Check establishment fees have been paid.
         assertEq(principalPaid,   0);
-        assertEq(interestPaid,    payment);
+        assertEq(interestPaid,    interestPaid);
         assertEq(delegateFeePaid, EXPECTED_POOL_DELEGATE_FEE);
         assertEq(treasuryFeePaid, EXPECTED_TREASURY_FEE);
 
         // Check loan, pool delegate, and treasury have received the fees.
-        assertEq(USDC.balanceOf(address(LOAN)), loanBalanceBeforePayment + interestPaid - delegateFeePaid - treasuryFeePaid);
+        assertEq(USDC.balanceOf(address(LOAN)), loanBalanceBeforePayment + interestPaid);
         assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceBeforePayment + delegateFeePaid);
         assertEq(USDC.balanceOf(TREASURY),      treasuryBalanceBeforePayment + treasuryFeePaid);
     }
