@@ -71,11 +71,10 @@ contract LoanV3RefinanceTests is TestUtils {
         // Define the current terms of the loan.
         uint256 initialPrincipal  = 10_000_000_000000;
         uint256 interestRate      = 9_75;
-        uint256 loanDuration      = 180 days;
-        uint256 numberOfPayments  = 6;
+        uint256 interval          = 30 days;
 
         // Make a payment before the refinance.
-        uint256 payment = _calculatePayment(initialPrincipal, interestRate, loanDuration, numberOfPayments);
+        uint256 payment = _calculatePayment(initialPrincipal, interestRate, interval);
         ( uint256 principalPaid, uint256 interestPaid, uint256 delegateFeePaid, uint256 treasuryFeePaid ) = _makeNextPayment(payment);
 
         // Check only interest has been paid.
@@ -86,26 +85,26 @@ contract LoanV3RefinanceTests is TestUtils {
 
         // Define new terms of the loan.
         uint256 principalIncrease = 2_500_000_000000;
+        uint256 paymentsRemaining = 3;
         interestRate              = 10_00;
-        loanDuration              = 90 days;
-        numberOfPayments          = 3;
 
-        bytes[] memory calls = new bytes[](3);
+        bytes[] memory calls = new bytes[](4);
         calls[0] = abi.encodeWithSelector(IRefinancer.increasePrincipal.selector,    principalIncrease);
-        calls[1] = abi.encodeWithSelector(IRefinancer.setInterestRate.selector,      interestRate);
-        calls[2] = abi.encodeWithSelector(IRefinancer.setPaymentsRemaining.selector, numberOfPayments);
+        calls[1] = abi.encodeWithSelector(IRefinancer.setEndingPrincipal.selector,   initialPrincipal + principalIncrease);
+        calls[2] = abi.encodeWithSelector(IRefinancer.setInterestRate.selector,      interestRate);
+        calls[3] = abi.encodeWithSelector(IRefinancer.setPaymentsRemaining.selector, paymentsRemaining);
 
         // Refinance the loan.
         _proposeNewTerms(calls);
         _acceptNewTerms(calls, principalIncrease);
 
         // Calculate the payment using the new terms of the loan.
-        payment = _calculatePayment((initialPrincipal + principalIncrease), interestRate, loanDuration, numberOfPayments);
+        payment = _calculatePayment((initialPrincipal + principalIncrease), interestRate, interval);
         ( principalPaid, interestPaid, delegateFeePaid, treasuryFeePaid ) = _makeNextPayment(payment);
 
         // Check establishment fees have been paid.
         assertEq(principalPaid,   0);
-        assertEq(interestPaid,    payment - LOAN.delegateFee() -  LOAN.treasuryFee());
+        assertEq(interestPaid,    payment - LOAN.delegateFee() - LOAN.treasuryFee());
         assertEq(delegateFeePaid, LOAN.delegateFee());
         assertEq(treasuryFeePaid, LOAN.treasuryFee());
     }
@@ -122,8 +121,8 @@ contract LoanV3RefinanceTests is TestUtils {
     /*** Uitlity Functions ***/
     /*************************/
 
-    function _calculatePayment(uint256 principal, uint256 interestRate, uint256 loanDuration, uint256 numberOfPayments) internal pure returns (uint256 payment) {
-        return principal * interestRate * loanDuration / YEAR / numberOfPayments / BASIS_POINTS;
+    function _calculatePayment(uint256 principal, uint256 interestRate, uint256 interval) internal pure returns (uint256 payment) {
+        return principal * interestRate * interval / YEAR / BASIS_POINTS;
     }
 
     function _makeNextPayment(uint256 payment_) internal returns (uint256 principal_, uint256 interest_, uint256 delegateFee_, uint256 treasuryFee_) {
