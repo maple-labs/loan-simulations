@@ -22,7 +22,7 @@ contract LoanV3UpgradeTests is TestUtils {
     IMapleLoan        internal constant LOAN         = IMapleLoan(0x1597bc9C167bA318Da52EE94FDb0efAf84837BBF);
     IMapleLoanFactory internal constant LOAN_FACTORY = IMapleLoanFactory(0x36a7350309B2Eb30F3B908aB0154851B5ED81db0);
 
-   // Existing state variables.
+    // Existing Loan state variables.
     address internal _borrower;
     address internal _lender;
     address internal _pendingBorrower;

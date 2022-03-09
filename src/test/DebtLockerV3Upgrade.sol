@@ -7,7 +7,6 @@ import { IDebtLocker }        from "../../lib/debt-locker/contracts/interfaces/I
 import { IDebtLockerFactory } from "../../lib/debt-locker/contracts/interfaces/IDebtLockerFactory.sol";
 
 import { DebtLocker }            from "../../lib/debt-locker/contracts/DebtLocker.sol";
-import { DebtLockerInitializer } from "../../lib/debt-locker/contracts/DebtLockerInitializer.sol";
 
 contract DebtLockerV3UpgradeTests is TestUtils {
 
@@ -41,8 +40,8 @@ contract DebtLockerV3UpgradeTests is TestUtils {
     function setUp() external {
         vm.startPrank(GOVERNOR);
         DEBT_LOCKER_FACTORY.registerImplementation(300, DEBT_LOCKER_IMPLEMENTATION_V300, DEBT_LOCKER_INITIALIZER);
-        DEBT_LOCKER_FACTORY.setDefaultVersion(300);
         DEBT_LOCKER_FACTORY.enableUpgradePath(200, 300, address(0));
+        DEBT_LOCKER_FACTORY.setDefaultVersion(300);
         vm.stopPrank();
     }
 
