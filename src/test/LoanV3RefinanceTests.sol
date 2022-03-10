@@ -36,20 +36,16 @@ contract LoanV3RefinanceTests is TestUtils {
     uint256 internal constant STARTING_PRINCIPAL          = 10_000_000_000000;
 
     // New terms of the loan.
-    uint256 internal constant DEADLINE               = type(uint256).max;
     uint256 internal constant NEW_INTEREST_RATE      = 0.1e18;
     uint256 internal constant NEW_PAYMENTS_REMAINING = 3;
-    uint256 internal constant NEW_PRINCIPAL          = STARTING_PRINCIPAL + PRINCIPAL_INCREASE;
+    uint256 internal constant PRINCIPAL_DECREASE     = 1_500_000_000000;
     uint256 internal constant PRINCIPAL_INCREASE     = 2_500_000_000000;
+    uint256 internal constant PROPOSAL_DURATION      = 10 days;
 
     // Starting balances of relevant contracts.
     uint256 internal immutable LOAN_STARTING_BALANCE          = USDC.balanceOf(address(LOAN));
     uint256 internal immutable POOL_DELEGATE_STARTING_BALANCE = USDC.balanceOf(POOL_DELEGATE);
     uint256 internal immutable TREASURY_STARTING_BALANCE      = USDC.balanceOf(TREASURY);
-
-    // Expected establishment fees.
-    uint256 internal immutable EXPECTED_POOL_DELEGATE_FEE = _calculateEstablishmentFee(NEW_PRINCIPAL, 33, PAYMENT_INTERVAL);
-    uint256 internal immutable EXPECTED_TREASURY_FEE      = _calculateEstablishmentFee(NEW_PRINCIPAL, 66, PAYMENT_INTERVAL);
 
     // Newly deployed contracts.
     address internal immutable DEBT_LOCKER_IMPLEMENTATION_V300 = address(new DebtLocker());
@@ -96,68 +92,288 @@ contract LoanV3RefinanceTests is TestUtils {
         assertEq(LOAN.paymentsRemaining(), STARTING_PAYMENTS_REMAINING);
         assertEq(LOAN.paymentInterval(),   PAYMENT_INTERVAL);
 
-        // Make a payment before the refinance.
-        uint256 interestPayment = _calculateInterestPayment(STARTING_PRINCIPAL, STARTING_INTEREST_RATE, PAYMENT_INTERVAL);
-        ( uint256 principalPaid, uint256 interestPaid, uint256 delegateFeePaid, uint256 treasuryFeePaid ) = _makeNextPayment(interestPayment);
+        // Calculate expected payment before refinance.
+        ( uint256 principal, uint256 interest, uint256 delegateFee, uint256 treasuryFee ) = LOAN.getNextPaymentBreakdown();
 
-        // Check only interest has been paid.
-        assertEq(principalPaid,   0);
-        assertEq(interestPaid,    interestPayment);
-        assertEq(delegateFeePaid, 0);
-        assertEq(treasuryFeePaid, 0);
+        // Check only interest will be paid.
+        assertEq(principal,   0);
+        assertEq(interest,    _calculateInterestPayment(STARTING_PRINCIPAL, STARTING_INTEREST_RATE, PAYMENT_INTERVAL));
+        assertEq(delegateFee, 0);
+        assertEq(treasuryFee, 0);
+
+        _makeNextPayment(interest);
 
         // Check interest was received by the loan, and nothing was received by the pool delegate or treasury.
-        assertEq(USDC.balanceOf(address(LOAN)), LOAN_STARTING_BALANCE + interestPayment);
+        assertEq(USDC.balanceOf(address(LOAN)), LOAN_STARTING_BALANCE + interest);
         assertEq(USDC.balanceOf(POOL_DELEGATE), POOL_DELEGATE_STARTING_BALANCE);
         assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE);
 
+        uint256 deadline = block.timestamp + PROPOSAL_DURATION;
+        uint256 newPrincipal = STARTING_PRINCIPAL + PRINCIPAL_INCREASE;
+
         bytes[] memory calls = new bytes[](4);
-        calls[2] = abi.encodeWithSelector(IRefinancer.increasePrincipal.selector,    PRINCIPAL_INCREASE);
-        calls[3] = abi.encodeWithSelector(IRefinancer.setEndingPrincipal.selector,   NEW_PRINCIPAL);
+        calls[0] = abi.encodeWithSelector(IRefinancer.increasePrincipal.selector,    PRINCIPAL_INCREASE);
+        calls[1] = abi.encodeWithSelector(IRefinancer.setEndingPrincipal.selector,   newPrincipal);
+        calls[2] = abi.encodeWithSelector(IRefinancer.setInterestRate.selector,      NEW_INTEREST_RATE);
+        calls[3] = abi.encodeWithSelector(IRefinancer.setPaymentsRemaining.selector, NEW_PAYMENTS_REMAINING);
+
+        assertEq(LOAN.refinanceCommitment(), 0);
+
+        _proposeNewTerms(deadline, calls);
+
+        assertEq(LOAN.refinanceCommitment(), keccak256(abi.encode(REFINANCER, deadline, calls)));
+
+        // Accept the new terms before the deadline expires.
+        vm.warp(block.timestamp + PROPOSAL_DURATION / 2);
+        _acceptNewTerms(deadline, calls, PRINCIPAL_INCREASE);
+
+        assertEq(LOAN.refinanceCommitment(), 0);
+
+        // Cache pool delegate balance after the refinance.
+        uint256 poolDelegateBalanceAfterRefinance = USDC.balanceOf(POOL_DELEGATE);
+
+        // Drawdown all of the funds.
+        _drawdownFunds();
+
+        // Calculate expected establishment fees.
+        uint256 expectedPoolDelegateFee = _calculateEstablishmentFee(newPrincipal, 33, PAYMENT_INTERVAL);
+        uint256 expectedTreasuryFee     = _calculateEstablishmentFee(newPrincipal, 66, PAYMENT_INTERVAL);
+
+        // Check loan state has been updated correctly.
+        assertEq(LOAN.principal(),         newPrincipal);
+        assertEq(LOAN.endingPrincipal(),   newPrincipal);
+        assertEq(LOAN.interestRate(),      NEW_INTEREST_RATE);
+        assertEq(LOAN.paymentsRemaining(), NEW_PAYMENTS_REMAINING);
+        assertEq(LOAN.paymentInterval(),   PAYMENT_INTERVAL);
+        assertEq(LOAN.delegateFee(),       expectedPoolDelegateFee);
+        assertEq(LOAN.treasuryFee(),       expectedTreasuryFee);
+
+        // Calculate the interest payment using the new terms of the loan, adding the establishment fees on top.
+        ( principal, interest, delegateFee, treasuryFee ) = LOAN.getNextPaymentBreakdown();
+
+        // Check interest and establishment fees have been defined correctly.
+        assertEq(principal,   0);
+        assertEq(interest,    _calculateInterestPayment(newPrincipal, NEW_INTEREST_RATE, PAYMENT_INTERVAL));
+        assertEq(delegateFee, expectedPoolDelegateFee);
+        assertEq(treasuryFee, expectedTreasuryFee);
+
+        uint256 payment = interest + delegateFee + treasuryFee;
+        _makeNextPayment(payment);
+
+        // Check loan, pool delegate, and treasury have received the fees.
+        assertEq(USDC.balanceOf(address(LOAN)), interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceAfterRefinance + delegateFee);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE + treasuryFee);
+
+        // Make the remaining payments.
+        _makeNextPayment(payment);
+        _closeLoan(newPrincipal + payment);
+
+        // Check loan is cleaned up.
+        assertEq(LOAN.principal(),         0);
+        assertEq(LOAN.endingPrincipal(),   0);
+        assertEq(LOAN.interestRate(),      0);
+        assertEq(LOAN.paymentsRemaining(), 0);
+        assertEq(LOAN.paymentInterval(),   0);
+        assertEq(LOAN.delegateFee(),       0);
+        assertEq(LOAN.treasuryFee(),       0);
+
+        // Check loan, pool delegate, and treasury have received all of the funds.
+        assertEq(USDC.balanceOf(address(LOAN)), newPrincipal + 3 * interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceAfterRefinance + 3 * delegateFee);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE + 3 * treasuryFee);
+    }
+
+    function test_refinance_afterUpgrade_samePrincipal() external {
+        // Assert the starting conditions of the loan.
+        assertEq(LOAN.principal(),         STARTING_PRINCIPAL);
+        assertEq(LOAN.endingPrincipal(),   STARTING_PRINCIPAL);
+        assertEq(LOAN.interestRate(),      STARTING_INTEREST_RATE);
+        assertEq(LOAN.paymentsRemaining(), STARTING_PAYMENTS_REMAINING);
+        assertEq(LOAN.paymentInterval(),   PAYMENT_INTERVAL);
+
+        // Calculate expected payment before refinance.
+        ( uint256 principal, uint256 interest, uint256 delegateFee, uint256 treasuryFee ) = LOAN.getNextPaymentBreakdown();
+
+        // Check only interest will be paid.
+        assertEq(principal,   0);
+        assertEq(interest,    _calculateInterestPayment(STARTING_PRINCIPAL, STARTING_INTEREST_RATE, PAYMENT_INTERVAL));
+        assertEq(delegateFee, 0);
+        assertEq(treasuryFee, 0);
+
+        _makeNextPayment(interest);
+
+        // Check interest was received by the loan, and nothing was received by the pool delegate or treasury.
+        assertEq(USDC.balanceOf(address(LOAN)), LOAN_STARTING_BALANCE + interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), POOL_DELEGATE_STARTING_BALANCE);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE);
+
+        uint256 deadline = block.timestamp + PROPOSAL_DURATION;
+        bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(IRefinancer.setInterestRate.selector,      NEW_INTEREST_RATE);
         calls[1] = abi.encodeWithSelector(IRefinancer.setPaymentsRemaining.selector, NEW_PAYMENTS_REMAINING);
 
         assertEq(LOAN.refinanceCommitment(), 0);
 
-        // Propose new terms through the borrower.
-        _proposeNewTerms(calls);
+        _proposeNewTerms(deadline, calls);
 
-        assertEq(LOAN.refinanceCommitment(), keccak256(abi.encode(REFINANCER, DEADLINE, calls)));
+        assertEq(LOAN.refinanceCommitment(), keccak256(abi.encode(REFINANCER, deadline, calls)));
 
-        // Accept the new terms through the pool delegate.
-        _acceptNewTerms(calls, PRINCIPAL_INCREASE);
+        // Accept the new terms before the deadline expires.
+        vm.warp(block.timestamp + PROPOSAL_DURATION / 2);
+        _acceptNewTerms(deadline, calls, 0);
 
         assertEq(LOAN.refinanceCommitment(), 0);
 
+        // Cache pool delegate balance after the refinance.
+        uint256 poolDelegateBalanceAfterRefinance = USDC.balanceOf(POOL_DELEGATE);
+
+        // Calculate expected establishment fees.
+        uint256 expectedPoolDelegateFee = _calculateEstablishmentFee(STARTING_PRINCIPAL, 33, PAYMENT_INTERVAL);
+        uint256 expectedTreasuryFee     = _calculateEstablishmentFee(STARTING_PRINCIPAL, 66, PAYMENT_INTERVAL);
+
         // Check loan state has been updated correctly.
-        assertEq(LOAN.principal(),         NEW_PRINCIPAL);
-        assertEq(LOAN.endingPrincipal(),   NEW_PRINCIPAL);
+        assertEq(LOAN.principal(),         STARTING_PRINCIPAL);
+        assertEq(LOAN.endingPrincipal(),   STARTING_PRINCIPAL);
         assertEq(LOAN.interestRate(),      NEW_INTEREST_RATE);
         assertEq(LOAN.paymentsRemaining(), NEW_PAYMENTS_REMAINING);
         assertEq(LOAN.paymentInterval(),   PAYMENT_INTERVAL);
-        assertEq(LOAN.delegateFee(),       EXPECTED_POOL_DELEGATE_FEE);
-        assertEq(LOAN.treasuryFee(),       EXPECTED_TREASURY_FEE);
-
-        // Cache balances before the payment.
-        uint256 loanBalanceBeforePayment         = USDC.balanceOf(address(LOAN));
-        uint256 poolDelegateBalanceBeforePayment = USDC.balanceOf(POOL_DELEGATE);
-        uint256 treasuryBalanceBeforePayment     = USDC.balanceOf(TREASURY);
+        assertEq(LOAN.delegateFee(),       expectedPoolDelegateFee);
+        assertEq(LOAN.treasuryFee(),       expectedTreasuryFee);
 
         // Calculate the interest payment using the new terms of the loan, adding the establishment fees on top.
-        interestPayment = _calculateInterestPayment(NEW_PRINCIPAL, NEW_INTEREST_RATE, PAYMENT_INTERVAL);
-        uint256 totalPayment = interestPayment + EXPECTED_POOL_DELEGATE_FEE + EXPECTED_TREASURY_FEE;
-        ( principalPaid, interestPaid, delegateFeePaid, treasuryFeePaid ) = _makeNextPayment(totalPayment);
+        ( principal, interest, delegateFee, treasuryFee ) = LOAN.getNextPaymentBreakdown();
 
-        // Check establishment fees have been paid.
-        assertEq(principalPaid,   0);
-        assertEq(interestPaid,    interestPayment);
-        assertEq(delegateFeePaid, EXPECTED_POOL_DELEGATE_FEE);
-        assertEq(treasuryFeePaid, EXPECTED_TREASURY_FEE);
+        // Check interest and establishment fees have been defined correctly.
+        assertEq(principal,   0);
+        assertEq(interest,    _calculateInterestPayment(STARTING_PRINCIPAL, NEW_INTEREST_RATE, PAYMENT_INTERVAL));
+        assertEq(delegateFee, expectedPoolDelegateFee);
+        assertEq(treasuryFee, expectedTreasuryFee);
+
+        uint256 payment = interest + delegateFee + treasuryFee;
+        _makeNextPayment(payment);
 
         // Check loan, pool delegate, and treasury have received the fees.
-        assertEq(USDC.balanceOf(address(LOAN)), loanBalanceBeforePayment + interestPaid);
-        assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceBeforePayment + delegateFeePaid);
-        assertEq(USDC.balanceOf(TREASURY),      treasuryBalanceBeforePayment + treasuryFeePaid);
+        assertEq(USDC.balanceOf(address(LOAN)), interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceAfterRefinance + delegateFee);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE + treasuryFee);
+
+        // Make the remaining payments.
+        _makeNextPayment(payment);
+        _closeLoan(STARTING_PRINCIPAL + payment);
+
+        // Check loan is cleaned up.
+        assertEq(LOAN.principal(),         0);
+        assertEq(LOAN.endingPrincipal(),   0);
+        assertEq(LOAN.interestRate(),      0);
+        assertEq(LOAN.paymentsRemaining(), 0);
+        assertEq(LOAN.paymentInterval(),   0);
+        assertEq(LOAN.delegateFee(),       0);
+        assertEq(LOAN.treasuryFee(),       0);
+
+        // Check loan, pool delegate, and treasury have received all of the funds.
+        assertEq(USDC.balanceOf(address(LOAN)), STARTING_PRINCIPAL + 3 * interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceAfterRefinance + 3 * delegateFee);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE + 3 * treasuryFee);
+    }
+
+    function test_refinance_afterUpgrade_principalDecrease() external {
+        // Assert the starting conditions of the loan.
+        assertEq(LOAN.principal(),         STARTING_PRINCIPAL);
+        assertEq(LOAN.endingPrincipal(),   STARTING_PRINCIPAL);
+        assertEq(LOAN.interestRate(),      STARTING_INTEREST_RATE);
+        assertEq(LOAN.paymentsRemaining(), STARTING_PAYMENTS_REMAINING);
+        assertEq(LOAN.paymentInterval(),   PAYMENT_INTERVAL);
+
+        // Calculate expected payment before refinance.
+        ( uint256 principal, uint256 interest, uint256 delegateFee, uint256 treasuryFee ) = LOAN.getNextPaymentBreakdown();
+
+        // Check only interest will be paid.
+        assertEq(principal,   0);
+        assertEq(interest,    _calculateInterestPayment(STARTING_PRINCIPAL, STARTING_INTEREST_RATE, PAYMENT_INTERVAL));
+        assertEq(delegateFee, 0);
+        assertEq(treasuryFee, 0);
+
+        _makeNextPayment(interest);
+
+        // Check interest was received by the loan, and nothing was received by the pool delegate or treasury.
+        assertEq(USDC.balanceOf(address(LOAN)), LOAN_STARTING_BALANCE + interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), POOL_DELEGATE_STARTING_BALANCE);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE);
+
+        uint256 deadline = block.timestamp + PROPOSAL_DURATION;
+        uint256 newPrincipal = STARTING_PRINCIPAL - PRINCIPAL_DECREASE;
+
+        bytes[] memory calls = new bytes[](4);
+        calls[0] = abi.encodeWithSelector(IRefinancer.setEndingPrincipal.selector,   newPrincipal);
+        calls[1] = abi.encodeWithSelector(IRefinancer.decreasePrincipal.selector,    PRINCIPAL_DECREASE);
+        calls[2] = abi.encodeWithSelector(IRefinancer.setInterestRate.selector,      NEW_INTEREST_RATE);
+        calls[3] = abi.encodeWithSelector(IRefinancer.setPaymentsRemaining.selector, NEW_PAYMENTS_REMAINING);
+
+        assertEq(LOAN.refinanceCommitment(), 0);
+
+        // Propose the new terms and return the decresed principal.
+        _proposeNewTerms(deadline, calls);
+        _returnFunds(PRINCIPAL_DECREASE);
+
+        assertEq(LOAN.refinanceCommitment(), keccak256(abi.encode(REFINANCER, deadline, calls)));
+
+        // Accept the new terms before the deadline expires.
+        vm.warp(block.timestamp + PROPOSAL_DURATION / 2);
+        _acceptNewTerms(deadline, calls, 0);
+
+        assertEq(LOAN.refinanceCommitment(), 0);
+
+        // Cache pool delegate balance after the refinance.
+        uint256 poolDelegateBalanceAfterRefinance = USDC.balanceOf(POOL_DELEGATE);
+
+        // Calculate expected establishment fees.
+        uint256 expectedPoolDelegateFee = _calculateEstablishmentFee(newPrincipal, 33, PAYMENT_INTERVAL);
+        uint256 expectedTreasuryFee     = _calculateEstablishmentFee(newPrincipal, 66, PAYMENT_INTERVAL);
+
+        // Check loan state has been updated correctly.
+        assertEq(LOAN.principal(),         newPrincipal);
+        assertEq(LOAN.endingPrincipal(),   newPrincipal);
+        assertEq(LOAN.interestRate(),      NEW_INTEREST_RATE);
+        assertEq(LOAN.paymentsRemaining(), NEW_PAYMENTS_REMAINING);
+        assertEq(LOAN.paymentInterval(),   PAYMENT_INTERVAL);
+        assertEq(LOAN.delegateFee(),       expectedPoolDelegateFee);
+        assertEq(LOAN.treasuryFee(),       expectedTreasuryFee);
+
+        // Calculate the interest payment using the new terms of the loan, adding the establishment fees on top.
+        ( principal, interest, delegateFee, treasuryFee ) = LOAN.getNextPaymentBreakdown();
+
+        // Check interest and establishment fees have been defined correctly.
+        assertEq(principal,   0);
+        assertEq(interest,    _calculateInterestPayment(newPrincipal, NEW_INTEREST_RATE, PAYMENT_INTERVAL));
+        assertEq(delegateFee, expectedPoolDelegateFee);
+        assertEq(treasuryFee, expectedTreasuryFee);
+
+        uint256 payment = interest + delegateFee + treasuryFee;
+        _makeNextPayment(payment);
+
+        // Check loan, pool delegate, and treasury have received the fees.
+        assertEq(USDC.balanceOf(address(LOAN)), interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceAfterRefinance + delegateFee);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE + treasuryFee);
+
+        // Make the remaining payments.
+        _makeNextPayment(payment);
+        _closeLoan(newPrincipal + payment);
+
+        // Check loan is cleaned up.
+        assertEq(LOAN.principal(),         0);
+        assertEq(LOAN.endingPrincipal(),   0);
+        assertEq(LOAN.interestRate(),      0);
+        assertEq(LOAN.paymentsRemaining(), 0);
+        assertEq(LOAN.paymentInterval(),   0);
+        assertEq(LOAN.delegateFee(),       0);
+        assertEq(LOAN.treasuryFee(),       0);
+
+        // Check loan, pool delegate, and treasury have received all of the funds.
+        assertEq(USDC.balanceOf(address(LOAN)), newPrincipal + 3 * interest);
+        assertEq(USDC.balanceOf(POOL_DELEGATE), poolDelegateBalanceAfterRefinance + 3 * delegateFee);
+        assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE + 3 * treasuryFee);
     }
 
     /*************************/
@@ -172,28 +388,52 @@ contract LoanV3RefinanceTests is TestUtils {
         return principal_ * feeRate_ * interval_ / 365 days / 100_00;
     }
 
-    function _makeNextPayment(uint256 payment_) internal returns (uint256 principal_, uint256 interest_, uint256 delegateFee_, uint256 treasuryFee_) {
+    function _drawdownFunds() internal {
+        vm.startPrank(BORROWER);
+        LOAN.drawdownFunds(LOAN.drawableFunds(), BORROWER);
+        vm.stopPrank();
+    }
+
+    function _returnFunds(uint256 amount_) internal {
         vm.startPrank(BORROWER);
 
-        _mintAndApprove(BORROWER, payment_);
-        vm.warp(LOAN.nextPaymentDueDate());
-        ( principal_, interest_, delegateFee_, treasuryFee_ ) = LOAN.makePayment(payment_);
+        _mintAndApprove(BORROWER, amount_);
+        LOAN.returnFunds(amount_);
 
         vm.stopPrank();
     }
 
-    function _proposeNewTerms(bytes[] memory calls_) internal {
-        vm.prank(BORROWER);
-        LOAN.proposeNewTerms(REFINANCER, DEADLINE, calls_);
+    function _makeNextPayment(uint256 payment_) internal {
+        vm.startPrank(BORROWER);
+
+        _mintAndApprove(BORROWER, payment_);
+        vm.warp(LOAN.nextPaymentDueDate());
+        LOAN.makePayment(payment_);
+
+        vm.stopPrank();
     }
 
-    function _acceptNewTerms(bytes[] memory calls_, uint256 principalIncrease_) internal {
+    function _closeLoan(uint256 payment_) internal {
+        vm.startPrank(BORROWER);
+
+        _mintAndApprove(BORROWER, payment_);
+        vm.warp(LOAN.nextPaymentDueDate());
+        LOAN.closeLoan(payment_);
+
+        vm.stopPrank();
+    }
+
+    function _proposeNewTerms(uint256 deadline_, bytes[] memory calls_) internal {
+        vm.prank(BORROWER);
+        LOAN.proposeNewTerms(REFINANCER, deadline_, calls_);
+    }
+
+    function _acceptNewTerms(uint256 deadline_, bytes[] memory calls_, uint256 principalIncrease_) internal {
         vm.startPrank(POOL_DELEGATE);
 
         POOL.fundLoan(address(LOAN), address(DEBT_LOCKER_FACTORY), principalIncrease_);
         POOL.claim(address(LOAN), address(DEBT_LOCKER_FACTORY));
-
-        DEBT_LOCKER.acceptNewTerms(REFINANCER, DEADLINE, calls_, principalIncrease_);
+        DEBT_LOCKER.acceptNewTerms(REFINANCER, deadline_, calls_, principalIncrease_);
 
         vm.stopPrank();
     }
@@ -204,9 +444,6 @@ contract LoanV3RefinanceTests is TestUtils {
     }
 
 }
-
-// TODO: test refinance same principal
-// TODO: test refinance reduced principal
 
 // TODO: test refinance before upgrade (propose and accept before upgrade)
 // TODO: test refinance during upgrade (propose before upgrade, accept after upgrade)
