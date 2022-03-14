@@ -19,4 +19,4 @@ echo Using profile: $FOUNDRY_PROFILE
 
 rm -rf out
 
-forge test --match "$match" -vvv
+forge test --match "$match" --rpc-url "$ETH_RPC_URL"

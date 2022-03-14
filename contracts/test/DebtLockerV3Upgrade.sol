@@ -45,7 +45,7 @@ contract DebtLockerV3UpgradeTests is TestUtils {
         vm.stopPrank();
     }
 
-    function test_upgrade_errorChecks() external {
+    function test_upgrade_errorChecks_dl() external {
         vm.expectRevert("DL:U:NOT_POOL_DELEGATE");
         DEBT_LOCKER.upgrade(300, "");
 
