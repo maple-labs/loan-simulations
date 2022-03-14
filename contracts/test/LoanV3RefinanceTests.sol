@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.7;
 
-import { TestUtils } from "../../lib/contract-test-utils/contracts/test.sol";
+import { TestUtils } from "../../modules/contract-test-utils/contracts/test.sol";
 
-import { IDebtLocker }        from "../../lib/debt-locker/contracts/interfaces/IDebtLocker.sol";
-import { IDebtLockerFactory } from "../../lib/debt-locker/contracts/interfaces/IDebtLockerFactory.sol";
-import { IMapleLoan }         from "../../lib/loan/contracts/interfaces/IMapleLoan.sol";
-import { IMapleLoanFactory }  from "../../lib/loan/contracts/interfaces/IMapleLoanFactory.sol";
-import { IRefinancer }        from "../../lib/loan/contracts/interfaces/IRefinancer.sol";
+import { IDebtLocker }        from "../../modules/debt-locker/contracts/interfaces/IDebtLocker.sol";
+import { IDebtLockerFactory } from "../../modules/debt-locker/contracts/interfaces/IDebtLockerFactory.sol";
+import { IMapleLoan }         from "../../modules/loan/contracts/interfaces/IMapleLoan.sol";
+import { IMapleLoanFactory }  from "../../modules/loan/contracts/interfaces/IMapleLoanFactory.sol";
+import { IRefinancer }        from "../../modules/loan/contracts/interfaces/IRefinancer.sol";
 
-import { DebtLocker }           from "../../lib/debt-locker/contracts/DebtLocker.sol";
-import { MapleLoan }            from "../../lib/loan/contracts/MapleLoan.sol";
-import { MapleLoanInitializer } from "../../lib/loan/contracts/MapleLoanInitializer.sol";
+import { DebtLocker }           from "../../modules/debt-locker/contracts/DebtLocker.sol";
+import { MapleLoan }            from "../../modules/loan/contracts/MapleLoan.sol";
+import { MapleLoanInitializer } from "../../modules/loan/contracts/MapleLoanInitializer.sol";
 
 import { IPoolLike, IUSDCLike } from "../interfaces/Interfaces.sol";
 

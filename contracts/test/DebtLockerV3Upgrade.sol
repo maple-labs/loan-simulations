@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.7;
 
-import { TestUtils } from "../../lib/contract-test-utils/contracts/test.sol";
+import { TestUtils } from "../../modules/contract-test-utils/contracts/test.sol";
 
-import { IDebtLocker }        from "../../lib/debt-locker/contracts/interfaces/IDebtLocker.sol";
-import { IDebtLockerFactory } from "../../lib/debt-locker/contracts/interfaces/IDebtLockerFactory.sol";
+import { IDebtLocker }        from "../../modules/debt-locker/contracts/interfaces/IDebtLocker.sol";
+import { IDebtLockerFactory } from "../../modules/debt-locker/contracts/interfaces/IDebtLockerFactory.sol";
 
-import { DebtLocker }            from "../../lib/debt-locker/contracts/DebtLocker.sol";
+import { DebtLocker } from "../../modules/debt-locker/contracts/DebtLocker.sol";
 
 contract DebtLockerV3UpgradeTests is TestUtils {
 

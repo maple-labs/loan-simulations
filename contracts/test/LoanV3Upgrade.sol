@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.7;
 
-import { TestUtils } from "../../lib/contract-test-utils/contracts/test.sol";
+import { TestUtils } from "../../modules/contract-test-utils/contracts/test.sol";
 
-import { IMapleLoanFactory }  from "../../lib/loan/contracts/interfaces/IMapleLoanFactory.sol";
-import { IMapleLoan }         from "../../lib/loan/contracts/interfaces/IMapleLoan.sol";
+import { IMapleLoanFactory }  from "../../modules/loan/contracts/interfaces/IMapleLoanFactory.sol";
+import { IMapleLoan }         from "../../modules/loan/contracts/interfaces/IMapleLoan.sol";
 
-import { MapleLoan }             from "../../lib/loan/contracts/MapleLoan.sol";
-import { MapleLoanInitializer }  from "../../lib/loan/contracts/MapleLoanInitializer.sol";
+import { MapleLoan }             from "../../modules/loan/contracts/MapleLoan.sol";
+import { MapleLoanInitializer }  from "../../modules/loan/contracts/MapleLoanInitializer.sol";
 
 contract LoanV3UpgradeTests is TestUtils {
 
@@ -15,7 +15,7 @@ contract LoanV3UpgradeTests is TestUtils {
     address internal constant GOVERNOR = address(0xd6d4Bcde6c816F17889f1Dd3000aF0261B03a196);
 
     address internal constant LOAN_IMPLEMENTATION_V200 = address(0x97940C7aea99998da4c56922211ce012E7765395);
-    
+
     address internal immutable LOAN_IMPLEMENTATION_V300 = address(new MapleLoan());
     address internal immutable LOAN_INITIALIZER_V300    = address(new MapleLoanInitializer());
 

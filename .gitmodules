@@ -1,0 +1,9 @@
+[submodule "modules/debt-locker"]
+	path = modules/debt-locker
+	url = https://github.com/maple-labs/debt-locker
+[submodule "modules/contract-test-utils"]
+	path = modules/contract-test-utils
+	url = https://github.com/maple-labs/contract-test-utils
+[submodule "modules/loan"]
+	path = modules/loan
+	url = https://github.com/maple-labs/loan
