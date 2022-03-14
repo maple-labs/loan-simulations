@@ -68,13 +68,13 @@ contract LoanV3RefinanceTests is TestUtils {
 
         vm.stopPrank();
 
-        // Upgrade the DebtLocker to the new version.
-        vm.prank(POOL_DELEGATE);
-        DEBT_LOCKER.upgrade(300, "");
+        // // Upgrade the DebtLocker to the new version.
+        // vm.prank(POOL_DELEGATE);
+        // DEBT_LOCKER.upgrade(300, "");
 
-        // Upgrade the Loan to the new version.
-        vm.prank(BORROWER);
-        LOAN.upgrade(300, "");
+        // // Upgrade the Loan to the new version.
+        // vm.prank(BORROWER);
+        // LOAN.upgrade(300, "");
     }
 
     // Based on the following spreadheet: https://docs.google.com/spreadsheets/d/1v3ALXotiJNXpqfxENjeoocguFFeuDyd_jfUs3khihPc/edit#gid=945746867
@@ -89,7 +89,7 @@ contract LoanV3RefinanceTests is TestUtils {
         // Borrowers draws down all funds from the loan.
         _drawdownAllFunds();
 
-        ( uint256 principal, uint256 interest, uint256 delegateFee, uint256 treasuryFee ) = LOAN.getNextPaymentBreakdown();
+        ( uint256 principal, uint256 interest ) = LOAN.getNextPaymentBreakdown();
 
         // Check only interest will be paid.
         assertEq(principal,   0);
@@ -108,6 +108,8 @@ contract LoanV3RefinanceTests is TestUtils {
 
         vm.warp(_start + 60 days);
 
+        // TODO: Another getNextPaymentBreakdown?
+
         // Borrower makes another payment.
         _makePayment(interest);
 
@@ -115,7 +117,7 @@ contract LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(POOL_DELEGATE), POOL_DELEGATE_STARTING_BALANCE + 0);
         assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE      + 0);
 
-        vm.warp(_start + 80 days);
+        vm.warp(_start + 75 days);
 
         // Define the new terms of the loan.
         uint256 deadline = block.timestamp + 10 days;
@@ -128,12 +130,20 @@ contract LoanV3RefinanceTests is TestUtils {
 
         assertEq(LOAN.refinanceCommitment(), 0);
 
+        // Borrowr upgrades the Loan to V3 through the UI before proposeNewTerms
+        vm.prank(BORROWER);
+        LOAN.upgrade(300, "");
+
         // Borrower proposes new terms.
         _proposeNewTerms(deadline, calls);
 
         assertEq(LOAN.refinanceCommitment(), keccak256(abi.encode(REFINANCER, deadline, calls)));
 
-        vm.warp(_start + 85 days);
+        vm.warp(_start + 80 days);
+
+        // Pool Delegate upgrades the DebtLocker to V3 through the UI before acceptNewTerms
+        vm.prank(POOL_DELEGATE);
+        DEBT_LOCKER.upgrade(300, "");
 
         // Pool delegate funds the loan and accepts the proposal after a time delay.
         _fundLoan(2_500_000_000000);
@@ -147,6 +157,7 @@ contract LoanV3RefinanceTests is TestUtils {
         assertEq(LOAN.interestRate(),        0.1e18);
         assertEq(LOAN.paymentsRemaining(),   3);
         assertEq(LOAN.paymentInterval(),     30 days);
+        assertEq(LOAN.refinanceInterest(),   1);
         assertEq(LOAN.delegateFee(),         3_390_410958);  // 12,500,000 * 0.33% * (30 / 365)
         assertEq(LOAN.treasuryFee(),         6_780_821917);  // 12,500,000 * 0.66% * (30 / 365)
         assertEq(LOAN.refinanceCommitment(), 0);
