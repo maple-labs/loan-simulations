@@ -1046,6 +1046,9 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(address(LOAN_V2)), 0                              + refinanceInterest + 5 * interest + principal);
         assertEq(USDC.balanceOf(POOL_DELEGATE),    newPoolDelegateStartingBalance + 6 * delegateFee);
         assertEq(USDC.balanceOf(TREASURY),         newTreasuryStartingBalance     + 6 * treasuryFee);
+
+        // TODO: Add clear loan assertions, pool claim state assertions for last payment, balances at the very beginning and end for all users
+        // TODO: Send through params of other example loans
     }
 
     /*************************/
