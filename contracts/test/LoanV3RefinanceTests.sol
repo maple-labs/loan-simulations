@@ -915,8 +915,8 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
         assertEq(LOAN_V3.paymentsRemaining(),   6);
         assertEq(LOAN_V3.paymentInterval(),     30 days);
         assertEq(LOAN_V3.refinanceInterest(),   119_178_082191);  // 20m * 7.5% * (29 / 365)
-        assertEq(LOAN_V3.delegateFee(),         13_380_821917);   // 30,000,000 * 0.33% * (30 / 365)
-        assertEq(LOAN_V3.treasuryFee(),         26_761_643834);   // 30,000,000 * 0.66% * (30 / 365)
+        assertEq(LOAN_V3.delegateFee(),         9_010_958903);    // 30,000,000 * 0.33% * (30 / 365)
+        assertEq(LOAN_V3.treasuryFee(),         18_021_917807);   // 30,000,000 * 0.66% * (30 / 365)
         assertEq(LOAN_V3.refinanceCommitment(), 0);
         assertEq(LOAN_V3.nextPaymentDueDate(),  _start + 388 days);
 
@@ -937,8 +937,8 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
 
         assertEq(principal,         0);
         assertEq(refinanceInterest, 291_780_821917);  // 20m * 7.5% * (30 / 365) + 10m * 8.5% * (29 / 365)
-        assertEq(delegateFee,       13_380_821917);
-        assertEq(treasuryFee,       26_761_643834);
+        assertEq(delegateFee,       9_010_958903);
+        assertEq(treasuryFee,       18_021_917807);
 
         // Borrower makes a payment.
         _makePayment(refinanceInterest + delegateFee + treasuryFee);
@@ -957,8 +957,8 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
 
         assertEq(principal,   0);
         assertEq(interest,    172_602_739726);  // 20m * 7.5% * (30 / 365)
-        assertEq(delegateFee, 13_380_821917);
-        assertEq(treasuryFee, 26_761_643834);
+        assertEq(delegateFee, 9_010_958903);
+        assertEq(treasuryFee, 18_021_917807);
 
         // Borrower makes a payment.
         _makePayment(interest + delegateFee + treasuryFee);
@@ -977,8 +977,8 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
 
         assertEq(principal,   0);
         assertEq(interest,    172_602_739726);  // 20m * 7.5% * (30 / 365)
-        assertEq(delegateFee, 13_380_821917);
-        assertEq(treasuryFee, 26_761_643834);
+        assertEq(delegateFee, 9_010_958903);
+        assertEq(treasuryFee, 18_021_917807);
 
         // Borrower makes a payment.
         _makePayment(interest + delegateFee + treasuryFee);
@@ -997,8 +997,8 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
 
         assertEq(principal,   0);
         assertEq(interest,    172_602_739726);  // 20m * 7.5% * (30 / 365)
-        assertEq(delegateFee, 13_380_821917);
-        assertEq(treasuryFee, 26_761_643834);
+        assertEq(delegateFee, 9_010_958903);
+        assertEq(treasuryFee, 18_021_917807);
 
         // Borrower makes a payment.
         _makePayment(interest + delegateFee + treasuryFee);
@@ -1017,8 +1017,8 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
 
         assertEq(principal,   0);
         assertEq(interest,    172_602_739726);  // 20m * 7.5% * (30 / 365)
-        assertEq(delegateFee, 13_380_821917);
-        assertEq(treasuryFee, 26_761_643834);
+        assertEq(delegateFee, 9_010_958903);
+        assertEq(treasuryFee, 18_021_917807);
 
         // Borrower makes a payment.
         _makePayment(interest + delegateFee + treasuryFee);
@@ -1037,8 +1037,8 @@ contract Alameda_LoanV3RefinanceTests is TestUtils {
 
         assertEq(principal,   30_000_000_000000);
         assertEq(interest,    172_602_739726);  // 20m * 7.5% * (30 / 365)
-        assertEq(delegateFee, 13_380_821917);
-        assertEq(treasuryFee, 26_761_643834);
+        assertEq(delegateFee, 9_010_958903);
+        assertEq(treasuryFee, 18_021_917807);
 
         // Borrower makes a payment.
         _makePayment(principal + interest + delegateFee + treasuryFee);
