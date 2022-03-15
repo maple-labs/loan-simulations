@@ -5,6 +5,7 @@ interface IPoolLike {
     function claim(address loan_, address debtLockerFactory_) external returns (uint256[7] memory claimInfo_);
     function fundLoan(address loan_, address debtLockerFactory_, uint256 amount_) external;
     function liquidityLocker() external view returns (address liquidityLocker_);
+    function deposit(uint256 amount_) external;
 }
 
 interface IUSDCLike {
