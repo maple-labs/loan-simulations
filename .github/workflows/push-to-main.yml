@@ -22,4 +22,6 @@ jobs:
           git submodule update --init --recursive
 
       - name: Run forge tests
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: ./test.sh -p super_deep
