@@ -13,9 +13,9 @@ import { IMapleLoan as IMapleLoanV2 } from "../../modules/loan-v2/contracts/inte
 import { IMapleLoanFactory }          from "../../modules/loan-v2/contracts/interfaces/IMapleLoanFactory.sol";
 import { IRefinancer }                from "../../modules/loan-v2/contracts/interfaces/IRefinancer.sol";
 
-import { IMapleLoan as IMapleLoanV3 }                      from "../../modules/loan-v3/contracts/interfaces/IMapleLoan.sol";
-import { MapleLoan as MapleLoanV3 }                        from "../../modules/loan-v3/contracts/MapleLoan.sol";
-import { MapleLoanInitializer as MapleLoanInitializerV3 }  from "../../modules/loan-v3/contracts/MapleLoanInitializer.sol";
+import { IMapleLoan as IMapleLoanV3 }                     from "../../modules/loan-v3/contracts/interfaces/IMapleLoan.sol";
+import { MapleLoan as MapleLoanV3 }                       from "../../modules/loan-v3/contracts/MapleLoan.sol";
+import { MapleLoanInitializer as MapleLoanInitializerV3 } from "../../modules/loan-v3/contracts/MapleLoanInitializer.sol";
 
 import { IPoolLike, IUSDCLike } from "../interfaces/Interfaces.sol";
 
@@ -171,7 +171,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(delegateFee,       3_390_410958);
         assertEq(treasuryFee,       6_780_821917);
 
-        vm.warp(_start + 90 days); // TODO: The due date should be recalculated here.
+        vm.warp(_start + 110 days);
 
         // Make the first payment on the new loan.
         _makePayment(refinanceInterest + delegateFee + treasuryFee);
@@ -180,7 +180,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(POOL_DELEGATE),    newPoolDelegateStartingBalance + delegateFee);
         assertEq(USDC.balanceOf(TREASURY),         TREASURY_STARTING_BALANCE      + treasuryFee);
 
-        vm.warp(_start + 120 days);
+        vm.warp(_start + 140 days);
 
         ( principal, interest, delegateFee, treasuryFee ) = LOAN_V3.getNextPaymentBreakdown();
 
@@ -196,7 +196,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(POOL_DELEGATE),    newPoolDelegateStartingBalance + 2 * delegateFee);
         assertEq(USDC.balanceOf(TREASURY),         TREASURY_STARTING_BALANCE      + 2 * treasuryFee);
 
-        vm.warp(_start + 150 days);
+        vm.warp(_start + 170 days);
 
         ( principal, interest, delegateFee, treasuryFee ) = LOAN_V3.getNextPaymentBreakdown();
 
@@ -310,7 +310,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(delegateFee,       2_712_328767);
         assertEq(treasuryFee,       5_424_657534);
 
-        vm.warp(_start + 90 days); // TODO: The due date should be recalculated here.
+        vm.warp(_start + 110 days);
 
         // Make the first payment on the new loan.
         _makePayment(refinanceInterest + delegateFee + treasuryFee);
@@ -319,7 +319,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(POOL_DELEGATE),    newPoolDelegateStartingBalance + delegateFee);
         assertEq(USDC.balanceOf(TREASURY),         TREASURY_STARTING_BALANCE      + treasuryFee);
 
-        vm.warp(_start + 120 days);
+        vm.warp(_start + 140 days);
 
         ( principal, interest, delegateFee, treasuryFee ) = LOAN_V3.getNextPaymentBreakdown();
 
@@ -330,7 +330,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(POOL_DELEGATE),    newPoolDelegateStartingBalance + 2 * delegateFee);
         assertEq(USDC.balanceOf(TREASURY),         TREASURY_STARTING_BALANCE      + 2 * treasuryFee);
 
-        vm.warp(_start + 150 days);
+        vm.warp(_start + 170 days);
 
         ( principal, interest, delegateFee, treasuryFee ) = LOAN_V3.getNextPaymentBreakdown();
 
@@ -444,7 +444,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(delegateFee,       2_034_246575);
         assertEq(treasuryFee,       4_068_493150);
 
-        vm.warp(_start + 90 days); // TODO: The due date should be recalculated here.
+        vm.warp(_start + 110 days);
 
         // Make the first payment on the new loan.
         _makePayment(refinanceInterest + delegateFee + treasuryFee);
@@ -453,7 +453,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(POOL_DELEGATE),    newPoolDelegateStartingBalance + delegateFee);
         assertEq(USDC.balanceOf(TREASURY),         TREASURY_STARTING_BALANCE      + treasuryFee);
 
-        vm.warp(_start + 120 days);
+        vm.warp(_start + 140 days);
 
         ( principal, interest, delegateFee, treasuryFee ) = LOAN_V3.getNextPaymentBreakdown();
 
@@ -464,7 +464,7 @@ contract FBG_LoanV3RefinanceTests is TestUtils {
         assertEq(USDC.balanceOf(POOL_DELEGATE), newPoolDelegateStartingBalance + 2 * delegateFee);
         assertEq(USDC.balanceOf(TREASURY),      TREASURY_STARTING_BALANCE      + 2 * treasuryFee);
 
-        vm.warp(_start + 150 days);
+        vm.warp(_start + 170 days);
 
         ( principal, interest, delegateFee, treasuryFee ) = LOAN_V3.getNextPaymentBreakdown();
 
