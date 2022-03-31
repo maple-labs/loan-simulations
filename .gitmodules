@@ -1,9 +1,15 @@
-[submodule "lib/loan"]
-	path = lib/loan
-	url = https://github.com/maple-labs/loan.git
-[submodule "lib/contract-test-utils"]
-	path = lib/contract-test-utils
-	url = https://github.com/maple-labs/contract-test-utils.git
-[submodule "lib/debt-locker"]
-	path = lib/debt-locker
-	url = https://github.com/maple-labs/debt-locker.git
+[submodule "modules/contract-test-utils"]
+	path = modules/contract-test-utils
+	url = https://github.com/maple-labs/contract-test-utils
+[submodule "modules/loan-v2"]
+	path = modules/loan-v2
+	url = https://github.com/maple-labs/loan
+[submodule "modules/loan-v3"]
+	path = modules/loan-v3
+	url = https://github.com/maple-labs/loan
+[submodule "modules/debt-locker-v3"]
+	path = modules/debt-locker-v3
+	url = https://github.com/maple-labs/debt-locker
+[submodule "modules/debt-locker-v2"]
+	path = modules/debt-locker-v2
+	url = https://github.com/maple-labs/debt-locker

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.7;
 
-import { TestUtils } from "../../lib/contract-test-utils/contracts/test.sol";
+import { TestUtils } from "../../modules/contract-test-utils/contracts/test.sol";
 
-import { IDebtLocker }        from "../../lib/debt-locker/contracts/interfaces/IDebtLocker.sol";
-import { IDebtLockerFactory } from "../../lib/debt-locker/contracts/interfaces/IDebtLockerFactory.sol";
+import { IDebtLocker }        from "../../modules/debt-locker-v3/contracts/interfaces/IDebtLocker.sol";
+import { IDebtLockerFactory } from "../../modules/debt-locker-v3/contracts/interfaces/IDebtLockerFactory.sol";
 
-import { DebtLocker }            from "../../lib/debt-locker/contracts/DebtLocker.sol";
-import { DebtLockerInitializer } from "../../lib/debt-locker/contracts/DebtLockerInitializer.sol";
+import { DebtLocker } from "../../modules/debt-locker-v3/contracts/DebtLocker.sol";
 
 contract DebtLockerV3UpgradeTests is TestUtils {
 
@@ -41,12 +40,12 @@ contract DebtLockerV3UpgradeTests is TestUtils {
     function setUp() external {
         vm.startPrank(GOVERNOR);
         DEBT_LOCKER_FACTORY.registerImplementation(300, DEBT_LOCKER_IMPLEMENTATION_V300, DEBT_LOCKER_INITIALIZER);
-        DEBT_LOCKER_FACTORY.setDefaultVersion(300);
         DEBT_LOCKER_FACTORY.enableUpgradePath(200, 300, address(0));
+        DEBT_LOCKER_FACTORY.setDefaultVersion(300);
         vm.stopPrank();
     }
 
-    function test_upgrade_errorChecks() external {
+    function test_upgrade_errorChecks_dl() external {
         vm.expectRevert("DL:U:NOT_POOL_DELEGATE");
         DEBT_LOCKER.upgrade(300, "");
 

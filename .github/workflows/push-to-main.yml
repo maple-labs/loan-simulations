@@ -1,23 +1,27 @@
 name: 50k fuzz run test on push to main
 
 on:
-    push:
-        branches:
-            - main
+  push:
+    branches:
+      - main
 
 jobs:
-    run-ci:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v2
+  run-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
 
-            - name: Install Foundry
-                uses: onbjerg/foundry-toolchain@v1
-                with:
-                version: nightly
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
 
-            - name: Pull library deps
-                run: forge update
+      - name: Install submodules
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule update --init --recursive
 
-            - name: Run forge tests
-                run: ./test.sh -r 50000
+      - name: Run forge tests
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+        run: ./test.sh -p super_deep

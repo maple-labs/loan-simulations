@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.7;
 
-import { TestUtils } from "../../lib/contract-test-utils/contracts/test.sol";
+import { TestUtils } from "../../modules/contract-test-utils/contracts/test.sol";
 
-import { IMapleLoanFactory }  from "../../lib/loan/contracts/interfaces/IMapleLoanFactory.sol";
-import { IMapleLoan }         from "../../lib/loan/contracts/interfaces/IMapleLoan.sol";
+import { IMapleLoanFactory }  from "../../modules/loan-v3/contracts/interfaces/IMapleLoanFactory.sol";
+import { IMapleLoan }         from "../../modules/loan-v3/contracts/interfaces/IMapleLoan.sol";
 
-import { MapleLoan }             from "../../lib/loan/contracts/MapleLoan.sol";
-import { MapleLoanInitializer }  from "../../lib/loan/contracts/MapleLoanInitializer.sol";
+import { MapleLoan }             from "../../modules/loan-v3/contracts/MapleLoan.sol";
+import { MapleLoanInitializer }  from "../../modules/loan-v3/contracts/MapleLoanInitializer.sol";
 
 contract LoanV3UpgradeTests is TestUtils {
 
@@ -15,14 +15,14 @@ contract LoanV3UpgradeTests is TestUtils {
     address internal constant GOVERNOR = address(0xd6d4Bcde6c816F17889f1Dd3000aF0261B03a196);
 
     address internal constant LOAN_IMPLEMENTATION_V200 = address(0x97940C7aea99998da4c56922211ce012E7765395);
-    
+
     address internal immutable LOAN_IMPLEMENTATION_V300 = address(new MapleLoan());
     address internal immutable LOAN_INITIALIZER_V300    = address(new MapleLoanInitializer());
 
     IMapleLoan        internal constant LOAN         = IMapleLoan(0x1597bc9C167bA318Da52EE94FDb0efAf84837BBF);
     IMapleLoanFactory internal constant LOAN_FACTORY = IMapleLoanFactory(0x36a7350309B2Eb30F3B908aB0154851B5ED81db0);
 
-   // Existing state variables.
+    // Existing Loan state variables.
     address internal _borrower;
     address internal _lender;
     address internal _pendingBorrower;
@@ -157,6 +157,7 @@ contract LoanV3UpgradeTests is TestUtils {
         assertEq(LOAN.principal(),          _principal);
 
         assertEq(LOAN.refinanceCommitment(), 0);
+        assertEq(LOAN.refinanceInterest(),   0);
 
         assertEq(LOAN.delegateFee(), 0);
         assertEq(LOAN.treasuryFee(), 0);
